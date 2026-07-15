@@ -1,18 +1,24 @@
 import type { editor } from 'monaco-editor'
 
 import { MonacoSetupSnippetsFeature } from '@features/dashboard/config-profiles/monaco-setup'
-import { Box, Button, Group, Paper } from '@mantine/core'
+import { Box, Button, Group, Paper, Select, TextInput } from '@mantine/core'
 import { useForm, schemaResolver } from '@mantine/form'
 import { modals } from '@mantine/modals'
 import { useMonaco } from '@monaco-editor/react'
 import { UpdateSnippetCommand } from '@remnawave/backend-contract'
 import clsx from 'clsx'
 import { t } from 'i18next'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { queryClient } from '@shared/api'
-import { useSyncSnippet, useUpdateSnippet } from '@shared/api/hooks'
+import {
+    PolicyModuleKind,
+    PolicyModuleScope,
+    useSyncSnippet,
+    useUpdatePolicyModule,
+    useUpdateSnippet
+} from '@shared/api/hooks'
 import { QueryKeys } from '@shared/api/hooks/keys-factory'
 import { useModalEscapeGuard, usePseudoFullscreen } from '@shared/hooks'
 import { CodeEditor, editorClasses, EditorFooter, EditorStatusBar } from '@shared/ui/code-editor'
@@ -22,11 +28,12 @@ import { forceMonacoRetokenize } from '@shared/utils/monaco/force-retokenize'
 
 import { openConfirmSnippetSyncModal } from './confirm-snippet-sync.modal'
 import classes from './Snippets.module.css'
+import { TSnippet } from './types'
 
 export const EDIT_SNIPPET_MODAL_ID = 'edit-snippet-modal'
 
 interface IProps {
-    snippet: UpdateSnippetCommand.Response['response']['snippets'][number]
+    snippet: TSnippet
 }
 
 export const EditSnippetModal = (props: IProps) => {
@@ -39,8 +46,15 @@ export const EditSnippetModal = (props: IProps) => {
 
     useModalEscapeGuard(EDIT_SNIPPET_MODAL_ID, isFullscreen)
     const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
+    const [kind, setKind] = useState<PolicyModuleKind>(
+        (snippet.kind as PolicyModuleKind | null) ?? 'outbound-set'
+    )
+    const [scope, setScope] = useState<PolicyModuleScope>(
+        (snippet.scope as PolicyModuleScope | null) ?? 'shared'
+    )
+    const [description, setDescription] = useState(snippet.description ?? '')
 
-    const { mutate: updateSnippet, isPending: isUpdating } = useUpdateSnippet({
+    const { mutate: updateSnippet, isPending: isUpdatingSnippet } = useUpdateSnippet({
         mutationFns: {
             onSuccess: () => {
                 queryClient.refetchQueries({ queryKey: QueryKeys.snippets.getSnippets.queryKey })
@@ -48,6 +62,9 @@ export const EditSnippetModal = (props: IProps) => {
             }
         }
     })
+    const { mutate: updatePolicyModule, isPending: isUpdatingPolicyModule } =
+        useUpdatePolicyModule()
+    const isUpdating = isUpdatingSnippet || isUpdatingPolicyModule
 
     const { mutate: syncSnippet } = useSyncSnippet()
 
@@ -90,25 +107,38 @@ export const EditSnippetModal = (props: IProps) => {
             return
         }
 
-        updateSnippet(
-            {
-                variables: {
+        if (snippet.kind) {
+            updatePolicyModule(
+                {
                     name: values.name,
+                    kind,
+                    scope,
+                    description: description || null,
                     snippet: currentValue
-                }
-            },
-            {
-                onSuccess: () => {
-                    openConfirmSnippetSyncModal(() => {
-                        syncSnippet({
-                            variables: {
-                                name: values.name
-                            }
+                },
+                { onSuccess: () => modals.close(EDIT_SNIPPET_MODAL_ID) }
+            )
+        } else {
+            updateSnippet(
+                {
+                    variables: {
+                        name: values.name,
+                        snippet: currentValue
+                    }
+                },
+                {
+                    onSuccess: () => {
+                        openConfirmSnippetSyncModal(() => {
+                            syncSnippet({
+                                variables: {
+                                    name: values.name
+                                }
+                            })
                         })
-                    })
+                    }
                 }
-            }
-        )
+            )
+        }
     }
 
     useEffect(() => {
@@ -123,10 +153,45 @@ export const EditSnippetModal = (props: IProps) => {
         <form onSubmit={(e) => editSnippetForm.onSubmit(handleUpdate)(e)}>
             <Box className={clsx(classes.container, isFullscreen && fullscreenClasses.overlay)}>
                 {!isFullscreen && (
-                    <CopyableFieldShared
-                        label={t('snippets.drawer.widget.snippet-name')}
-                        value={editSnippetForm.getValues().name}
-                    />
+                    <>
+                        <CopyableFieldShared
+                            label={t('snippets.drawer.widget.snippet-name')}
+                            value={editSnippetForm.getValues().name}
+                        />
+                        {snippet.kind && (
+                            <Group grow>
+                                <Select
+                                    data={[
+                                        { value: 'outbound-set', label: 'Outbound Module' },
+                                        { value: 'routing-rule-set', label: 'Routing Rule Module' }
+                                    ]}
+                                    label="Module Type"
+                                    onChange={(value) =>
+                                        setKind(
+                                            (value as PolicyModuleKind | null) ?? 'outbound-set'
+                                        )
+                                    }
+                                    value={kind}
+                                />
+                                <Select
+                                    data={[
+                                        { value: 'shared', label: 'Shared' },
+                                        { value: 'internal', label: 'Internal' }
+                                    ]}
+                                    label="Scope"
+                                    onChange={(value) =>
+                                        setScope((value as PolicyModuleScope | null) ?? 'shared')
+                                    }
+                                    value={scope}
+                                />
+                                <TextInput
+                                    label="Description"
+                                    onChange={(event) => setDescription(event.currentTarget.value)}
+                                    value={description}
+                                />
+                            </Group>
+                        )}
+                    </>
                 )}
 
                 <div

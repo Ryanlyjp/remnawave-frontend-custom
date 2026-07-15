@@ -1,16 +1,17 @@
 import type { editor } from 'monaco-editor'
 
 import { MonacoSetupSnippetsFeature } from '@features/dashboard/config-profiles/monaco-setup'
-import { Box, Button, Group, Paper, TextInput } from '@mantine/core'
+import { Box, Button, Group, Paper, Select, TextInput } from '@mantine/core'
 import { useForm, schemaResolver } from '@mantine/form'
 import { modals } from '@mantine/modals'
 import { useMonaco } from '@monaco-editor/react'
 import { CreateSnippetCommand } from '@remnawave/backend-contract'
 import clsx from 'clsx'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { queryClient } from '@shared/api'
+import { PolicyModuleKind, PolicyModuleScope, useCreatePolicyModule } from '@shared/api/hooks'
 import { QueryKeys } from '@shared/api/hooks/keys-factory'
 import { useCreateSnippet } from '@shared/api/hooks/snippets/snippets.mutation.hooks'
 import { useModalEscapeGuard, usePseudoFullscreen } from '@shared/hooks'
@@ -22,7 +23,11 @@ import classes from './Snippets.module.css'
 
 export const CREATE_SNIPPET_MODAL_ID = 'create-snippet-modal'
 
-export const CreateSnippetModal = () => {
+interface IProps {
+    forcedKind?: PolicyModuleKind
+}
+
+export const CreateSnippetModal = ({ forcedKind }: IProps) => {
     const { t, i18n } = useTranslation()
 
     const monaco = useMonaco()
@@ -30,6 +35,8 @@ export const CreateSnippetModal = () => {
 
     useModalEscapeGuard(CREATE_SNIPPET_MODAL_ID, isFullscreen)
     const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
+    const [scope, setScope] = useState<PolicyModuleScope>('shared')
+    const [description, setDescription] = useState('')
 
     const createSnippetForm = useForm<CreateSnippetCommand.RequestBody>({
         name: 'create-snippet-form',
@@ -48,7 +55,7 @@ export const CreateSnippetModal = () => {
         MonacoSetupSnippetsFeature.setup(i18n.language)
     }, [i18n.language, monaco])
 
-    const { mutate: createSnippet, isPending: isCreating } = useCreateSnippet({
+    const { mutate: createSnippet, isPending: isCreatingSnippet } = useCreateSnippet({
         mutationFns: {
             onSuccess: () => {
                 queryClient.refetchQueries({ queryKey: QueryKeys.snippets.getSnippets.queryKey })
@@ -57,6 +64,9 @@ export const CreateSnippetModal = () => {
             }
         }
     })
+    const { mutate: createPolicyModule, isPending: isCreatingPolicyModule } =
+        useCreatePolicyModule()
+    const isCreating = isCreatingSnippet || isCreatingPolicyModule
 
     const handleCreate = (values: CreateSnippetCommand.RequestBody) => {
         if (!editorRef.current) return
@@ -86,12 +96,25 @@ export const CreateSnippetModal = () => {
             return
         }
 
-        createSnippet({
-            variables: {
-                name: values.name,
-                snippet: currentValue
-            }
-        })
+        if (forcedKind) {
+            createPolicyModule(
+                {
+                    name: values.name,
+                    kind: forcedKind,
+                    scope,
+                    description: description || null,
+                    snippet: currentValue
+                },
+                { onSuccess: () => modals.close(CREATE_SNIPPET_MODAL_ID) }
+            )
+        } else {
+            createSnippet({
+                variables: {
+                    name: values.name,
+                    snippet: currentValue
+                }
+            })
+        }
     }
 
     const hasSnippetError = Boolean(createSnippetForm.getInputProps('snippet').error)
@@ -100,15 +123,37 @@ export const CreateSnippetModal = () => {
         <form onSubmit={(e) => createSnippetForm.onSubmit(handleCreate)(e)}>
             <Box className={clsx(classes.container, isFullscreen && fullscreenClasses.overlay)}>
                 {!isFullscreen && (
-                    <TextInput
-                        key={createSnippetForm.key('name')}
-                        label={t('snippets.drawer.widget.snippet-name')}
-                        placeholder={t(
-                            'snippets.drawer.widget.enter-snippet-name-cannot-be-changed-later'
+                    <>
+                        <TextInput
+                            key={createSnippetForm.key('name')}
+                            label={t('snippets.drawer.widget.snippet-name')}
+                            placeholder={t(
+                                'snippets.drawer.widget.enter-snippet-name-cannot-be-changed-later'
+                            )}
+                            required
+                            {...createSnippetForm.getInputProps('name')}
+                        />
+                        {forcedKind && (
+                            <Group grow>
+                                <Select
+                                    data={[
+                                        { value: 'shared', label: 'Shared' },
+                                        { value: 'internal', label: 'Internal' }
+                                    ]}
+                                    label="Scope"
+                                    onChange={(value) =>
+                                        setScope((value as PolicyModuleScope | null) ?? 'shared')
+                                    }
+                                    value={scope}
+                                />
+                                <TextInput
+                                    label="Description"
+                                    onChange={(event) => setDescription(event.currentTarget.value)}
+                                    value={description}
+                                />
+                            </Group>
                         )}
-                        required
-                        {...createSnippetForm.getInputProps('name')}
-                    />
+                    </>
                 )}
 
                 <div

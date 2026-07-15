@@ -3,7 +3,7 @@ import type { editor } from 'monaco-editor'
 import { ConfigEditorActionsFeature } from '@features/dashboard/config-profiles/config-editor-actions'
 import { ConfigValidationFeature } from '@features/dashboard/config-profiles/config-validation'
 import { MonacoSetupFeature } from '@features/dashboard/config-profiles/monaco-setup'
-import { Box, Button, Code, Group, Loader, Paper } from '@mantine/core'
+import { Box, Button, Card, Code, Group, Loader, Paper, Select, Stack, Text } from '@mantine/core'
 import { modals } from '@mantine/modals'
 import { useMonaco } from '@monaco-editor/react'
 import clsx from 'clsx'
@@ -21,6 +21,49 @@ import { preventBackScroll } from '@shared/utils/misc'
 
 import styles from './ConfigEditor.module.css'
 import { IProps } from './interfaces'
+
+const getParsedEditorConfig = (value: string): Record<string, unknown> | null => {
+    try {
+        return JSON.parse(value) as Record<string, unknown>
+    } catch {
+        return null
+    }
+}
+
+const getPolicyModuleSelection = (
+    config: Record<string, unknown> | null,
+    key: 'outbounds' | 'routingRules'
+): string | null => {
+    const policyModules = config?.policyModules as Record<string, unknown> | undefined
+    const value = policyModules?.[key]
+
+    return Array.isArray(value)
+        ? (value.find((item): item is string => typeof item === 'string') ?? null)
+        : null
+}
+
+const applyPolicyModuleSelection = (
+    config: Record<string, unknown>,
+    key: 'outbounds' | 'routingRules',
+    values: string[]
+): Record<string, unknown> => {
+    const nextConfig = structuredClone(config)
+    const policyModules = (nextConfig.policyModules as Record<string, unknown> | undefined) ?? {}
+
+    if (values.length > 0) {
+        policyModules[key] = values
+    } else {
+        delete policyModules[key]
+    }
+
+    if (Object.keys(policyModules).length > 0) {
+        nextConfig.policyModules = policyModules
+    } else {
+        delete nextConfig.policyModules
+    }
+
+    return nextConfig
+}
 
 export function ConfigEditorWidget(props: IProps) {
     const { t, i18n } = useTranslation()
@@ -55,6 +98,28 @@ export function ConfigEditorWidget(props: IProps) {
     )
 
     const snippetMap = new Map(snippets.snippets.map((s) => [s.name, s.snippet]))
+    const parsedConfig = getParsedEditorConfig(editorRef.current?.getValue() ?? originalValue)
+    const outboundModuleOptions = snippets.snippets
+        .filter((snippet) => snippet.kind === 'outbound-set')
+        .map((snippet) => ({ value: snippet.name, label: snippet.name }))
+    const routingRuleModuleOptions = snippets.snippets
+        .filter((snippet) => snippet.kind === 'routing-rule-set')
+        .map((snippet) => ({ value: snippet.name, label: snippet.name }))
+
+    const handlePolicyModulesChange = (key: 'outbounds' | 'routingRules', values: string[]) => {
+        if (!editorRef.current) return
+
+        const currentConfig = getParsedEditorConfig(editorRef.current.getValue())
+        if (!currentConfig) return
+
+        const nextConfig = applyPolicyModuleSelection(currentConfig, key, values)
+        editorRef.current.setValue(JSON.stringify(nextConfig, null, 2))
+
+        if (!isWasmCrashed && !isWasmRestarting) {
+            ConfigValidationFeature.validate(editorRef, setResult, setIsConfigValid, snippetMap)
+        }
+        checkForChanges()
+    }
 
     useEffect(() => {
         if (wasWasmRestarting.current && !isWasmRestarting && !isWasmCrashed && editorRef.current) {
@@ -148,6 +213,39 @@ export function ConfigEditorWidget(props: IProps) {
 
     return (
         <Box className={clsx(styles.container, isFullscreen && fullscreenClasses.overlay)}>
+            {!isFullscreen && (
+                <Card mb="md" withBorder>
+                    <Stack>
+                        <Text fw={600} size="sm">
+                            策略模块
+                        </Text>
+                        <Select
+                            clearable
+                            data={outboundModuleOptions}
+                            description="附加到此配置文件的可复用出站模块"
+                            label="出站模块"
+                            onChange={(value) =>
+                                handlePolicyModulesChange('outbounds', value ? [value] : [])
+                            }
+                            placeholder="无"
+                            searchable
+                            value={getPolicyModuleSelection(parsedConfig, 'outbounds')}
+                        />
+                        <Select
+                            clearable
+                            data={routingRuleModuleOptions}
+                            description="附加到此配置文件的可复用路由规则模块"
+                            label="路由规则模块"
+                            onChange={(value) =>
+                                handlePolicyModulesChange('routingRules', value ? [value] : [])
+                            }
+                            placeholder="无"
+                            searchable
+                            value={getPolicyModuleSelection(parsedConfig, 'routingRules')}
+                        />
+                    </Stack>
+                </Card>
+            )}
             <Paper
                 className={clsx(
                     styles.editorWrapper,

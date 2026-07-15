@@ -14,6 +14,7 @@ import { NodePluginsBasePageConnector } from '@pages/dashboard/node-plugins/ui/c
 import { NodesMetricsPageConnector } from '@pages/dashboard/nodes-metrics/ui/connectors'
 import { NodesPageConnector } from '@pages/dashboard/nodes/ui/connectors'
 import { OpenEntityPage } from '@pages/dashboard/open-entity'
+import { PolicyModulesPageConnector } from '@pages/dashboard/policy-modules/connectors/policy-modules.page.connector'
 import { QuickOpenPage } from '@pages/dashboard/quick-open'
 import { RemnawaveSettingsConnector } from '@pages/dashboard/remnawave-settings/connectors'
 import { ResponseRulesPageConnector } from '@pages/dashboard/response-rules/connectors/response-rules.page.connector'
@@ -94,6 +95,10 @@ const router = createBrowserRouter(
                         <Route
                             element={<ConfigProfileByUuidPageConnector />}
                             path={ROUTES.DASHBOARD.MANAGEMENT.CONFIG_PROFILE_BY_UUID}
+                        />
+                        <Route
+                            element={<PolicyModulesPageConnector />}
+                            path={ROUTES.DASHBOARD.MANAGEMENT.POLICY_MODULES}
                         />
                         <Route
                             element={<InternalSquadsPageConnector />}

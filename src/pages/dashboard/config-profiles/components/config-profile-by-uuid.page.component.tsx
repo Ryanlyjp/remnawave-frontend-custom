@@ -1,5 +1,5 @@
 import { ActionIcon, ActionIconGroup, Group, Tooltip } from '@mantine/core'
-import { GetConfigProfileByUuidCommand, GetSnippetsCommand } from '@remnawave/backend-contract'
+import { GetConfigProfileByUuidCommand } from '@remnawave/backend-contract'
 import { ConfigEditorWidget } from '@widgets/dashboard/config-profiles/config-editor/config-editor.widget'
 import { useTranslation } from 'react-i18next'
 import { TbArrowBackUp, TbCode, TbFile } from 'react-icons/tb'
@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router'
 
 import { showModal } from '@shared/_modals/show-modal'
 import { HelpActionIconShared } from '@shared/_modals/universal'
+import { SnippetsResponse } from '@shared/api/hooks/snippets/snippets.query.hooks'
 import { OPEN_ENTITY, ROUTES } from '@shared/constants'
 import { CopyEntityLinkButton } from '@shared/ui'
 import { Page } from '@shared/ui/page'
@@ -17,7 +18,7 @@ interface Props {
     isWasmCrashed: boolean
     isWasmRestarting: boolean
     onRestartWasm: () => void
-    snippets: GetSnippetsCommand.Response['response']
+    snippets: SnippetsResponse
 }
 
 export const ConfigProfileByUuidPageComponent = (props: Props) => {
