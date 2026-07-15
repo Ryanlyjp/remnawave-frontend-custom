@@ -133,6 +133,12 @@ export const useDesktopMenuSections = (): MenuItem[] => {
                     href: ROUTES.DASHBOARD.MANAGEMENT.CONFIG_PROFILES,
                     icon: XrayLogo,
                     id: 'config-profiles'
+                },
+                {
+                    name: '策略模块',
+                    href: ROUTES.DASHBOARD.MANAGEMENT.POLICY_MODULES,
+                    icon: TbCode,
+                    id: 'policy-modules'
                 }
             ]
         },

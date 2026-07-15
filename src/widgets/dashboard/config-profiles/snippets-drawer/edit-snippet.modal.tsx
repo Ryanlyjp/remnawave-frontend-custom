@@ -1,19 +1,17 @@
 import type { editor } from 'monaco-editor'
 
 import { MonacoSetupSnippetsFeature } from '@features/dashboard/config-profiles/monaco-setup'
-import { Button, Code, Group, Paper, Stack } from '@mantine/core'
+import { Button, Code, Group, Paper, Select, Stack, TextInput } from '@mantine/core'
 import { useForm } from '@mantine/form'
 import { modals } from '@mantine/modals'
 import { Editor, Monaco, useMonaco } from '@monaco-editor/react'
-import { UpdateSnippetCommand } from '@remnawave/backend-contract'
-import { t } from 'i18next'
-import { zodResolver } from 'mantine-form-zod-resolver'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { queryClient } from '@shared/api'
-import { useUpdateSnippet } from '@shared/api/hooks'
+import { PolicyModuleKind, useUpdatePolicyModule } from '@shared/api/hooks'
 import { QueryKeys } from '@shared/api/hooks/keys-factory'
+import { SnippetRecord } from '@shared/api/hooks/snippets/snippets.query.hooks'
 import { monacoTheme } from '@shared/constants/monaco-theme'
 import { CopyableFieldShared } from '@shared/ui/copyable-field/copyable-field'
 
@@ -22,34 +20,43 @@ import classes from './SnippetsDrawer.module.css'
 export const EDIT_SNIPPET_MODAL_ID = 'edit-snippet-modal'
 
 interface IProps {
-    snippet: UpdateSnippetCommand.Response['response']['snippets'][number]
+    snippet: SnippetRecord
+}
+
+interface PolicyModuleFormValues {
+    name: string
+    kind: PolicyModuleKind
+    scope: 'shared' | 'internal'
+    description: string
+    snippet: Record<string, unknown>[]
 }
 
 export const EditSnippetModal = (props: IProps) => {
     const { snippet } = props
 
-    const { i18n } = useTranslation()
+    const { t, i18n } = useTranslation()
 
     const monaco = useMonaco()
     const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
 
-    const { mutate: updateSnippet, isPending: isUpdating } = useUpdateSnippet({
-        mutationFns: {
-            onSuccess: () => {
-                queryClient.refetchQueries({ queryKey: QueryKeys.snippets.getSnippets.queryKey })
-                modals.close(EDIT_SNIPPET_MODAL_ID)
-            }
-        }
-    })
+    const { mutate: updateSnippet, isPending: isUpdating } = useUpdatePolicyModule()
 
-    const editSnippetForm = useForm<UpdateSnippetCommand.Request>({
+    useEffect(() => {
+        if (!isUpdating) {
+            queryClient.refetchQueries({ queryKey: QueryKeys.snippets.getSnippets.queryKey })
+        }
+    }, [isUpdating])
+
+    const editSnippetForm = useForm<PolicyModuleFormValues>({
         name: 'edit-snippet-form',
         mode: 'uncontrolled',
         validateInputOnBlur: true,
-        validate: zodResolver(UpdateSnippetCommand.RequestSchema),
         initialValues: {
             name: snippet.name,
-            snippet: snippet.snippet as unknown as UpdateSnippetCommand.Request['snippet']
+            kind: (snippet.kind as PolicyModuleKind | null | undefined) ?? 'outbound-set',
+            scope: snippet.scope === 'internal' ? 'internal' : 'shared',
+            description: snippet.description ?? '',
+            snippet: snippet.snippet as Record<string, unknown>[]
         }
     })
 
@@ -60,7 +67,7 @@ export const EditSnippetModal = (props: IProps) => {
         })
     }
 
-    const handleUpdate = (values: UpdateSnippetCommand.Request) => {
+    const handleUpdate = (values: PolicyModuleFormValues) => {
         if (!editorRef.current) return
 
         let currentValue = editorRef.current.getValue()
@@ -80,7 +87,11 @@ export const EditSnippetModal = (props: IProps) => {
             return
         }
 
-        if (currentValue.some((item) => Object.keys(item).length === 0)) {
+        if (
+            currentValue.some(
+                (item) => !item || typeof item !== 'object' || Object.keys(item).length === 0
+            )
+        ) {
             editSnippetForm.setFieldError(
                 'snippet',
                 t('snippets.drawer.widget.snippet-cannot-contain-empty-objects')
@@ -89,11 +100,13 @@ export const EditSnippetModal = (props: IProps) => {
         }
 
         updateSnippet({
-            variables: {
-                name: values.name,
-                snippet: currentValue
-            }
+            name: values.name,
+            kind: values.kind,
+            scope: values.scope,
+            description: values.description || null,
+            snippet: currentValue
         })
+        modals.close(EDIT_SNIPPET_MODAL_ID)
     }
 
     useEffect(() => {
@@ -108,6 +121,34 @@ export const EditSnippetModal = (props: IProps) => {
                 <CopyableFieldShared
                     label={t('snippets.drawer.widget.snippet-name')}
                     value={editSnippetForm.getValues().name}
+                />
+
+                <Group grow>
+                    <Select
+                        data={[
+                            { value: 'outbound-set', label: 'Outbound Module' },
+                            { value: 'routing-rule-set', label: 'Routing Rule Module' }
+                        ]}
+                        key={editSnippetForm.key('kind')}
+                        label="Module Type"
+                        {...editSnippetForm.getInputProps('kind')}
+                    />
+                    <Select
+                        data={[
+                            { value: 'shared', label: 'Shared' },
+                            { value: 'internal', label: 'Internal' }
+                        ]}
+                        key={editSnippetForm.key('scope')}
+                        label="Scope"
+                        {...editSnippetForm.getInputProps('scope')}
+                    />
+                </Group>
+
+                <TextInput
+                    key={editSnippetForm.key('description')}
+                    label="Description"
+                    placeholder="Optional note for operators"
+                    {...editSnippetForm.getInputProps('description')}
                 />
 
                 <Paper

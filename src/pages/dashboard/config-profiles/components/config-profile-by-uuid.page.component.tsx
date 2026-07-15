@@ -1,12 +1,13 @@
 import { ActionIcon, Box, Drawer, Flex, Group, Transition } from '@mantine/core'
 import { useMediaQuery } from '@mantine/hooks'
-import { GetConfigProfileByUuidCommand, GetSnippetsCommand } from '@remnawave/backend-contract'
+import { GetConfigProfileByUuidCommand } from '@remnawave/backend-contract'
 import { ConfigEditorWidget } from '@widgets/dashboard/config-profiles/config-editor/config-editor.widget'
 import { SnippetsDrawerWidget } from '@widgets/dashboard/config-profiles/snippets-drawer'
 import { useTranslation } from 'react-i18next'
 import { TbArrowBackUp, TbCode, TbFile } from 'react-icons/tb'
 import { useNavigate } from 'react-router'
 
+import { SnippetsResponse } from '@shared/api/hooks/snippets/snippets.query.hooks'
 import { ROUTES } from '@shared/constants'
 import { HelpActionIconShared } from '@shared/ui/help-drawer'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
@@ -20,7 +21,7 @@ interface Props {
     isWasmCrashed: boolean
     isWasmRestarting: boolean
     onRestartWasm: () => void
-    snippets: GetSnippetsCommand.Response['response']
+    snippets: SnippetsResponse
 }
 
 export const ConfigProfileByUuidPageComponent = (props: Props) => {

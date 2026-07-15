@@ -13,7 +13,6 @@ import {
     Text
 } from '@mantine/core'
 import { modals } from '@mantine/modals'
-import { GetSnippetsCommand, UpdateSnippetCommand } from '@remnawave/backend-contract'
 import { t } from 'i18next'
 import { PiCheck, PiCopy } from 'react-icons/pi'
 import { TbBraces, TbCode, TbTrash } from 'react-icons/tb'
@@ -21,13 +20,14 @@ import { TbBraces, TbCode, TbTrash } from 'react-icons/tb'
 import { queryClient } from '@shared/api'
 import { useDeleteSnippet } from '@shared/api/hooks'
 import { QueryKeys } from '@shared/api/hooks/keys-factory'
+import { SnippetRecord, SnippetsResponse } from '@shared/api/hooks/snippets/snippets.query.hooks'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 
 import { EDIT_SNIPPET_MODAL_ID, EditSnippetModal } from './edit-snippet.modal'
 import classes from './SnippetsDrawer.module.css'
 
 interface IProps {
-    snippets: GetSnippetsCommand.Response['response'] | undefined
+    snippets: SnippetsResponse | undefined
 }
 
 export const SnippetsGridWidget = (props: IProps) => {
@@ -72,9 +72,7 @@ export const SnippetsGridWidget = (props: IProps) => {
         return snippet.length
     }
 
-    const handleEditModal = (
-        snippet: UpdateSnippetCommand.Response['response']['snippets'][number]
-    ) => {
+    const handleEditModal = (snippet: SnippetRecord) => {
         modals.open({
             modalId: EDIT_SNIPPET_MODAL_ID,
             title: (
@@ -216,6 +214,25 @@ export const SnippetsGridWidget = (props: IProps) => {
                                     </ActionIcon>
                                 </Group>
                             </Group>
+
+                            <Group gap={6}>
+                                {(snippet as { kind?: string }).kind && (
+                                    <Badge color="violet" size="xs" variant="light">
+                                        {(snippet as { kind?: string }).kind}
+                                    </Badge>
+                                )}
+                                {(snippet as { scope?: string }).scope && (
+                                    <Badge color="gray" size="xs" variant="light">
+                                        {(snippet as { scope?: string }).scope}
+                                    </Badge>
+                                )}
+                            </Group>
+
+                            {(snippet as { description?: string }).description && (
+                                <Text c="dimmed" lineClamp={2} size="xs">
+                                    {(snippet as { description?: string }).description}
+                                </Text>
+                            )}
 
                             {preview.length > 0 && (
                                 <>

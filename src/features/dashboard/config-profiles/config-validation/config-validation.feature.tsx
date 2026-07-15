@@ -1,6 +1,5 @@
 import type { editor } from 'monaco-editor'
 
-import { GetSnippetsCommand } from '@remnawave/backend-contract'
 import consola from 'consola/browser'
 import dayjs from 'dayjs'
 import { RefObject } from 'react'
@@ -28,16 +27,42 @@ const replaceSnippetsInArray = (array: any[], snippetsMap: Map<string, unknown>)
     }
 }
 
+const applyPolicyModules = (config: Record<string, any>): void => {
+    const policyModules = config.policyModules as
+        | {
+              outbounds?: string[]
+              routingRules?: string[]
+              balancers?: string[]
+          }
+        | undefined
+
+    if (policyModules?.outbounds?.length) {
+        config.outbounds ??= []
+        config.outbounds.push(...policyModules.outbounds.map((snippet) => ({ snippet })))
+    }
+
+    if (policyModules?.routingRules?.length) {
+        config.routing ??= {}
+        config.routing.rules ??= []
+        config.routing.rules.push(...policyModules.routingRules.map((snippet) => ({ snippet })))
+    }
+
+    if (policyModules?.balancers?.length) {
+        config.routing ??= {}
+        config.routing.balancers ??= []
+        config.routing.balancers.push(...policyModules.balancers.map((snippet) => ({ snippet })))
+    }
+
+    delete config.policyModules
+}
+
 export const ConfigValidationFeature = {
     validate: (
         editorRef: RefObject<editor.IStandaloneCodeEditor | null>,
 
         setResult: (message: string) => void,
         setIsConfigValid: (isValid: boolean) => void,
-        snippetsMap: Map<
-            string,
-            GetSnippetsCommand.Response['response']['snippets'][number]['snippet']
-        >
+        snippetsMap: Map<string, unknown>
     ) => {
         try {
             if (!editorRef.current) return
@@ -53,6 +78,8 @@ export const ConfigValidationFeature = {
                 setIsConfigValid(false)
                 return
             }
+
+            applyPolicyModules(clonedCurrentValue)
 
             if (clonedCurrentValue.outbounds) {
                 replaceSnippetsInArray(clonedCurrentValue.outbounds, snippetsMap)

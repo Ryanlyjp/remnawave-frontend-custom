@@ -15,6 +15,7 @@ import {
 import {
     TbChartArcs,
     TbCirclesRelation,
+    TbCode,
     TbCreditCard,
     TbDeviceAnalytics,
     TbFlame,
@@ -79,6 +80,12 @@ export const useMobileMenuSections = (): MenuItem[] => {
                     href: ROUTES.DASHBOARD.MANAGEMENT.CONFIG_PROFILES,
                     icon: XrayLogo,
                     id: 'config-profiles'
+                },
+                {
+                    name: '策略模块',
+                    href: ROUTES.DASHBOARD.MANAGEMENT.POLICY_MODULES,
+                    icon: TbCode,
+                    id: 'policy-modules'
                 },
                 {
                     name: t('constants.hosts'),

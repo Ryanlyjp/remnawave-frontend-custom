@@ -1,37 +1,49 @@
 import type { editor } from 'monaco-editor'
 
 import { MonacoSetupSnippetsFeature } from '@features/dashboard/config-profiles/monaco-setup'
-import { Button, Code, Group, Paper, Stack, TextInput } from '@mantine/core'
+import { Button, Code, Group, Paper, Select, Stack, TextInput } from '@mantine/core'
 import { useForm } from '@mantine/form'
 import { modals } from '@mantine/modals'
 import { Editor, Monaco, useMonaco } from '@monaco-editor/react'
-import { CreateSnippetCommand } from '@remnawave/backend-contract'
-import { zodResolver } from 'mantine-form-zod-resolver'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { queryClient } from '@shared/api'
+import { PolicyModuleKind, useCreatePolicyModule } from '@shared/api/hooks'
 import { QueryKeys } from '@shared/api/hooks/keys-factory'
-import { useCreateSnippet } from '@shared/api/hooks/snippets/snippets.mutation.hooks'
 import { monacoTheme } from '@shared/constants/monaco-theme'
 
 import classes from './SnippetsDrawer.module.css'
 
 export const CREATE_SNIPPET_MODAL_ID = 'create-snippet-modal'
 
-export const CreateSnippetModal = () => {
+interface IProps {
+    forcedKind?: PolicyModuleKind
+}
+
+interface PolicyModuleFormValues {
+    name: string
+    kind: PolicyModuleKind
+    scope: 'shared' | 'internal'
+    description: string
+    snippet: Record<string, unknown>[]
+}
+
+export const CreateSnippetModal = ({ forcedKind }: IProps) => {
     const { t, i18n } = useTranslation()
 
     const monaco = useMonaco()
     const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
 
-    const createSnippetForm = useForm<CreateSnippetCommand.Request>({
+    const createSnippetForm = useForm<PolicyModuleFormValues>({
         name: 'create-snippet-form',
         mode: 'uncontrolled',
         validateInputOnBlur: true,
-        validate: zodResolver(CreateSnippetCommand.RequestSchema),
         initialValues: {
             name: '',
+            kind: forcedKind ?? 'outbound-set',
+            scope: 'shared',
+            description: '',
             snippet: []
         }
     })
@@ -42,17 +54,15 @@ export const CreateSnippetModal = () => {
         MonacoSetupSnippetsFeature.setup(monaco, i18n.language)
     }, [i18n.language, monaco])
 
-    const { mutate: createSnippet, isPending: isCreating } = useCreateSnippet({
-        mutationFns: {
-            onSuccess: () => {
-                queryClient.refetchQueries({ queryKey: QueryKeys.snippets.getSnippets.queryKey })
+    const { mutate: createSnippet, isPending: isCreating } = useCreatePolicyModule()
 
-                modals.close(CREATE_SNIPPET_MODAL_ID)
-            }
+    useEffect(() => {
+        if (!isCreating) {
+            queryClient.refetchQueries({ queryKey: QueryKeys.snippets.getSnippets.queryKey })
         }
-    })
+    }, [isCreating])
 
-    const handleCreate = (values: CreateSnippetCommand.Request) => {
+    const handleCreate = (values: PolicyModuleFormValues) => {
         if (!editorRef.current) return
 
         let currentValue = editorRef.current.getValue()
@@ -72,7 +82,11 @@ export const CreateSnippetModal = () => {
             return
         }
 
-        if (currentValue.some((item) => Object.keys(item).length === 0)) {
+        if (
+            currentValue.some(
+                (item) => !item || typeof item !== 'object' || Object.keys(item).length === 0
+            )
+        ) {
             createSnippetForm.setFieldError(
                 'snippet',
                 t('snippets.drawer.widget.snippet-cannot-contain-empty-objects')
@@ -81,11 +95,13 @@ export const CreateSnippetModal = () => {
         }
 
         createSnippet({
-            variables: {
-                name: values.name,
-                snippet: currentValue
-            }
+            name: values.name,
+            kind: values.kind,
+            scope: values.scope,
+            description: values.description || null,
+            snippet: currentValue
         })
+        modals.close(CREATE_SNIPPET_MODAL_ID)
     }
 
     const handleEditorDidMount = (monaco: Monaco) => {
@@ -106,6 +122,35 @@ export const CreateSnippetModal = () => {
                     )}
                     required
                     {...createSnippetForm.getInputProps('name')}
+                />
+
+                <Group grow>
+                    <Select
+                        data={[
+                            { value: 'outbound-set', label: 'Outbound Module' },
+                            { value: 'routing-rule-set', label: 'Routing Rule Module' }
+                        ]}
+                        disabled={!!forcedKind}
+                        key={createSnippetForm.key('kind')}
+                        label="Module Type"
+                        {...createSnippetForm.getInputProps('kind')}
+                    />
+                    <Select
+                        data={[
+                            { value: 'shared', label: 'Shared' },
+                            { value: 'internal', label: 'Internal' }
+                        ]}
+                        key={createSnippetForm.key('scope')}
+                        label="Scope"
+                        {...createSnippetForm.getInputProps('scope')}
+                    />
+                </Group>
+
+                <TextInput
+                    key={createSnippetForm.key('description')}
+                    label="Description"
+                    placeholder="Optional note for operators"
+                    {...createSnippetForm.getInputProps('description')}
                 />
 
                 <Paper

@@ -13,6 +13,7 @@ import { NodePluginsBasePageConnector } from '@pages/dashboard/node-plugins/ui/c
 import { NodesBandwidthTablePageConnector } from '@pages/dashboard/nodes-bandwidth-table/ui/connectors'
 import { NodesMetricsPageConnector } from '@pages/dashboard/nodes-metrics/ui/connectors'
 import { NodesPageConnector } from '@pages/dashboard/nodes/ui/connectors'
+import { PolicyModulesPageConnector } from '@pages/dashboard/policy-modules/connectors/policy-modules.page.connector'
 import { RemnawaveSettingsConnector } from '@pages/dashboard/remnawave-settings/connectors'
 import { ResponseRulesPageConnector } from '@pages/dashboard/response-rules/connectors/response-rules.page.connector'
 import { SessionsExplorerPageConnector } from '@pages/dashboard/sessions-explorer/ui/connectors/sessions-explorer.page.connector'
@@ -96,6 +97,10 @@ const router = createBrowserRouter(
                         <Route
                             element={<ConfigProfileByUuidPageConnector />}
                             path={ROUTES.DASHBOARD.MANAGEMENT.CONFIG_PROFILE_BY_UUID}
+                        />
+                        <Route
+                            element={<PolicyModulesPageConnector />}
+                            path={ROUTES.DASHBOARD.MANAGEMENT.POLICY_MODULES}
                         />
                         <Route
                             element={<InternalSquadsPageConnector />}
