@@ -20,6 +20,7 @@ import {
     UpdateUserCommand
 } from '@remnawave/backend-contract'
 
+import { UpdateUserHostAliasesCommand } from '../../contracts/user-host-aliases.contract'
 import { createMutationHook } from '../../tsq-helpers'
 
 export const useCreateUser = createMutationHook({
@@ -65,6 +66,31 @@ export const useUpdateUser = createMutationHook({
                 title: `Update User`,
                 message:
                     error instanceof Error ? error.message : `Request failed with unknown error.`,
+                color: 'red'
+            })
+        }
+    }
+})
+
+export const useUpdateUserHostAliases = createMutationHook({
+    endpoint: UpdateUserHostAliasesCommand.TSQ_url,
+    routeParamsSchema: UpdateUserHostAliasesCommand.RequestSchema,
+    bodySchema: UpdateUserHostAliasesCommand.RequestBodySchema,
+    responseSchema: UpdateUserHostAliasesCommand.ResponseSchema,
+    requestMethod: UpdateUserHostAliasesCommand.endpointDetails.REQUEST_METHOD,
+    rMutationParams: {
+        onSuccess: () => {
+            notifications.show({
+                title: 'Success',
+                message: 'Subscription node names saved',
+                color: 'teal'
+            })
+        },
+        onError: (error) => {
+            notifications.show({
+                title: 'Update subscription node names',
+                message:
+                    error instanceof Error ? error.message : 'Request failed with unknown error.',
                 color: 'red'
             })
         }

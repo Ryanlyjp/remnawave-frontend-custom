@@ -5,6 +5,7 @@ import { ToggleUserStatusButtonFeature } from '@features/ui/dashboard/users/togg
 import { Button, Group, Menu, px, Stack } from '@mantine/core'
 import { useForm, schemaResolver } from '@mantine/form'
 import { UpdateUserCommand } from '@remnawave/backend-contract'
+import { UserHostAliasesWidget } from '@widgets/dashboard/users/user-host-aliases'
 import dayjs from 'dayjs'
 import { motion } from 'motion/react'
 import { useEffect } from 'react'
@@ -104,6 +105,9 @@ export const ViewUserModalContent = (props: IProps) => {
                     queryKey: usersQueryKeys.getUserAccessibleNodes({
                         userId: userId
                     }).queryKey
+                })
+                queryClient.refetchQueries({
+                    queryKey: usersQueryKeys.getUserHostAliases({ userId }).queryKey
                 })
                 queryClient.setQueryData(
                     usersQueryKeys.getUserById({
@@ -286,6 +290,8 @@ export const ViewUserModalContent = (props: IProps) => {
                     </MotionStack>
                 </Group>
             )}
+
+            <UserHostAliasesWidget userId={user.id} />
 
             <ModalFooter isMobile={isMobile}>
                 <Menu keepMounted position="top-end" shadow="md">

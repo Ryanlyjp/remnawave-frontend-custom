@@ -1902,5 +1902,13 @@
     "connections-title": "已保存的连接",
     "connections-empty": "尚无保存的连接",
     "connections-current": "当前设置"
+  },
+  "user-host-aliases": {
+    "title": "订阅节点名称",
+    "description": "自定义只对该用户订阅生效的节点名称，不会修改全局 Host 名称。",
+    "empty": "该用户当前没有可选择的 Host。",
+    "save": "保存",
+    "discard": "放弃更改",
+    "reset": "重置为 Host 名称"
   }
 }
