@@ -9,9 +9,11 @@ import {
     GetUserSubscriptionRequestHistoryCommand
 } from '@remnawave/backend-contract'
 import { keepPreviousData } from '@tanstack/react-query'
+import { z } from 'zod'
 
 import { sToMs } from '@shared/utils/time-utils'
 
+import { GetUserHostAliasesCommand } from '../../contracts/user-host-aliases.contract'
 import { createGetQueryHook, errorHandler } from '../../tsq-helpers'
 
 export const usersQueryKeys = createQueryKeys('users', {
@@ -28,6 +30,9 @@ export const usersQueryKeys = createQueryKeys('users', {
         queryKey: null
     },
     getUserAccessibleNodes: (route: GetUserAccessibleNodesCommand.Request) => ({
+        queryKey: [route]
+    }),
+    getUserHostAliases: (route: z.infer<typeof GetUserHostAliasesCommand.RequestSchema>) => ({
         queryKey: [route]
     }),
     getUserSubscriptionRequestHistory: (
@@ -86,6 +91,17 @@ export const useGetUserAccessibleNodes = createGetQueryHook({
         staleTime: sToMs(60)
     },
     errorHandler: (error) => errorHandler(error, 'Get User Accessible Nodes')
+})
+
+export const useGetUserHostAliases = createGetQueryHook({
+    endpoint: GetUserHostAliasesCommand.TSQ_url,
+    responseSchema: GetUserHostAliasesCommand.ResponseSchema,
+    routeParamsSchema: GetUserHostAliasesCommand.RequestSchema,
+    getQueryKey: ({ route }) => usersQueryKeys.getUserHostAliases(route!).queryKey,
+    rQueryParams: {
+        staleTime: sToMs(15)
+    },
+    errorHandler: (error) => errorHandler(error, 'Get User Host Aliases')
 })
 
 export const useGetUserSubscriptionRequestHistory = createGetQueryHook({

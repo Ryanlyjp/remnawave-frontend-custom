@@ -37,6 +37,8 @@ import { handleFormErrors } from '@shared/utils/misc'
 
 import { useUserModalStoreActions } from '@entities/dashboard/user-modal-store/user-modal-store'
 
+import { UserHostAliasesWidget } from '../user-host-aliases'
+
 const MotionWrapper = motion.div
 const MotionStack = motion.create(Stack)
 
@@ -106,6 +108,11 @@ export const ViewUserModalContent = (props: IProps) => {
             onSuccess: (data) => {
                 queryClient.refetchQueries({
                     queryKey: usersQueryKeys.getUserAccessibleNodes({
+                        uuid: userUuid
+                    }).queryKey
+                })
+                queryClient.refetchQueries({
+                    queryKey: usersQueryKeys.getUserHostAliases({
                         uuid: userUuid
                     }).queryKey
                 })
@@ -296,6 +303,8 @@ export const ViewUserModalContent = (props: IProps) => {
                     </MotionStack>
                 </Group>
             )}
+
+            <UserHostAliasesWidget userUuid={user.uuid} />
 
             <ModalFooter isMobile={isMobile}>
                 <Menu keepMounted position="top-end" shadow="md">

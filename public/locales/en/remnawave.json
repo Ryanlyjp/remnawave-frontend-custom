@@ -2235,5 +2235,13 @@
     "widget": {
       "generate": "Generate"
     }
+  },
+  "user-host-aliases": {
+    "title": "Subscription node names",
+    "description": "Customize the node names generated only for this user. Global Host remarks are not changed.",
+    "empty": "This user currently has no selectable Hosts.",
+    "save": "Save",
+    "discard": "Discard changes",
+    "reset": "Reset to Host names"
   }
 }
