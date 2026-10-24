@@ -1,11 +1,11 @@
 import { ActionIcon, CopyButton, Tooltip } from '@mantine/core'
-import { GetSnippetsCommand } from '@remnawave/backend-contract'
 import cx from 'clsx'
 import { t } from 'i18next'
 import { useMemo } from 'react'
 import { PiCheck, PiCopy } from 'react-icons/pi'
 import { TbBraces, TbCode, TbFolder, TbPencil, TbTrash } from 'react-icons/tb'
 
+import { SnippetsResponse } from '@shared/api/hooks/snippets/snippets.query.hooks'
 import { EmptyPageLayout } from '@shared/ui/layouts/empty-page'
 import { buildTree, ITreeNode, ITreeRowContent, TreeBrowser } from '@shared/ui/tree-browser'
 
@@ -18,7 +18,7 @@ const countItems = (snippet: unknown) => (Array.isArray(snippet) ? snippet.lengt
 const getName = (snippet: TSnippet) => snippet.name
 
 interface IProps {
-    snippets: GetSnippetsCommand.Response['response'] | undefined
+    snippets: SnippetsResponse | undefined
 }
 
 export const SnippetsGridWidget = (props: IProps) => {
@@ -99,7 +99,7 @@ export const SnippetsGridWidget = (props: IProps) => {
                         color="red"
                         component="div"
                         loading={deletingName === snippet.name}
-                        onClick={stop(() => handleDelete(snippet.name))}
+                        onClick={stop(() => handleDelete(snippet))}
                         size="sm"
                         variant="subtle"
                     >

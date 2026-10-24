@@ -1,4 +1,4 @@
-import { Button, Group, Tabs } from '@mantine/core'
+import { Button, Group, SegmentedControl, Tabs } from '@mantine/core'
 import { modals } from '@mantine/modals'
 import {
     CREATE_SNIPPET_MODAL_ID,
@@ -8,6 +8,7 @@ import { SnippetsGridWidget } from '@widgets/dashboard/config-profiles/snippets/
 import { useMemo, useState } from 'react'
 import { TbCode, TbPlus } from 'react-icons/tb'
 
+import { CoreEngine } from '@shared/api/contracts/config-profile-engine.contract'
 import { PolicyModuleKind, PolicyModulesResponse } from '@shared/api/hooks'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { Page } from '@shared/ui/page'
@@ -19,14 +20,17 @@ interface Props {
 
 export const PolicyModulesPageComponent = ({ snippets }: Props) => {
     const [activeTab, setActiveTab] = useState<'outbound-set' | 'routing-rule-set'>('outbound-set')
+    const [engine, setEngine] = useState<CoreEngine>('XRAY')
 
     const filteredSnippets = useMemo(() => {
-        const filtered = snippets.snippets.filter((snippet) => snippet.kind === activeTab)
+        const filtered = snippets.snippets.filter(
+            (snippet) => snippet.engine === engine && snippet.kind === activeTab
+        )
         return {
             snippets: filtered,
             total: filtered.length
         }
-    }, [activeTab, snippets.snippets])
+    }, [activeTab, engine, snippets.snippets])
 
     const openCreateModal = (kind: PolicyModuleKind) => {
         modals.open({
@@ -41,7 +45,7 @@ export const PolicyModulesPageComponent = ({ snippets }: Props) => {
             centered: true,
             modalId: CREATE_SNIPPET_MODAL_ID,
             size: 'lg',
-            children: <CreateSnippetModal forcedKind={kind} />
+            children: <CreateSnippetModal forcedEngine={engine} forcedKind={kind} />
         })
     }
 
@@ -67,6 +71,15 @@ export const PolicyModulesPageComponent = ({ snippets }: Props) => {
                 value={activeTab}
                 onChange={(value) => setActiveTab((value as typeof activeTab) || 'outbound-set')}
             >
+                <SegmentedControl
+                    data={[
+                        { label: 'Xray', value: 'XRAY' },
+                        { label: 'Sing-box', value: 'SINGBOX' }
+                    ]}
+                    mb="md"
+                    onChange={(value) => setEngine(value as CoreEngine)}
+                    value={engine}
+                />
                 <Tabs.List>
                     <Tabs.Tab value="outbound-set">出站模块</Tabs.Tab>
                     <Tabs.Tab value="routing-rule-set">路由规则模块</Tabs.Tab>

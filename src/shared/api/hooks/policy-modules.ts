@@ -2,12 +2,14 @@ import { notifications } from '@mantine/notifications'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { instance } from '@shared/api/axios'
+import { CoreEngine } from '@shared/api/contracts/config-profile-engine.contract'
 
 export type PolicyModuleKind = 'outbound-set' | 'routing-rule-set' | 'balancer-set'
 export type PolicyModuleScope = 'shared' | 'internal'
 
 export interface PolicyModuleRecord {
     name: string
+    engine: CoreEngine
     kind?: PolicyModuleKind | null
     scope?: PolicyModuleScope | null
     description?: string | null
@@ -33,6 +35,7 @@ export const useGetPolicyModules = () => {
 
 interface UpsertPayload {
     name: string
+    engine: CoreEngine
     kind?: PolicyModuleKind | null
     scope?: PolicyModuleScope | null
     description?: string | null
@@ -87,8 +90,8 @@ export const useDeletePolicyModule = () => {
     const queryClient = useQueryClient()
 
     return useMutation({
-        mutationFn: async (name: string) => {
-            const response = await instance.delete('/api/snippets/', { data: { name } })
+        mutationFn: async ({ name, engine }: { name: string; engine: CoreEngine }) => {
+            const response = await instance.delete('/api/snippets/', { data: { name, engine } })
             return response.data.response
         },
         onSuccess: async () => {

@@ -64,7 +64,15 @@ const replaceSnippetsInArray = (array: any[], snippetsMap: Map<string, unknown>)
     }
 }
 
-const applyPolicyModules = (config: Record<string, any>): void => {
+interface ConfigWithPolicyModules extends Record<string, unknown> {
+    outbounds?: unknown[]
+    routing?: {
+        rules?: unknown[]
+        balancers?: unknown[]
+    }
+}
+
+const applyPolicyModules = (config: ConfigWithPolicyModules): void => {
     const policyModules = config.policyModules as
         | {
               outbounds?: string[]
@@ -94,6 +102,34 @@ const applyPolicyModules = (config: Record<string, any>): void => {
 }
 
 export const ConfigValidationFeature = {
+    validateSingbox: (
+        editorRef: RefObject<editor.IStandaloneCodeEditor | null>,
+        setResult: (message: string) => void,
+        setIsConfigValid: (isValid: boolean) => void,
+        snippetsMap: Map<string, unknown>
+    ) => {
+        try {
+            if (!editorRef.current) return
+            const config = JSON.parse(editorRef.current.getValue()) as Record<string, unknown>
+
+            if (!Array.isArray(config.inbounds) || !Array.isArray(config.outbounds)) {
+                throw new Error('Sing-box config must contain inbounds and outbounds arrays.')
+            }
+
+            const refs = config.policyModules as
+                | { outbounds?: string[]; routingRules?: string[] }
+                | undefined
+            for (const name of [...(refs?.outbounds ?? []), ...(refs?.routingRules ?? [])]) {
+                if (!snippetsMap.has(name)) throw new Error(`Policy module not found: ${name}`)
+            }
+
+            setResult(`${dayjs().format('HH:mm:ss')} | Sing-box JSON structure is valid.`)
+            setIsConfigValid(true)
+        } catch (err: unknown) {
+            setResult(`${dayjs().format('HH:mm:ss')} | ${(err as Error).message}`)
+            setIsConfigValid(false)
+        }
+    },
     validate: (
         editorRef: RefObject<editor.IStandaloneCodeEditor | null>,
 

@@ -1,5 +1,5 @@
-import { GetConfigProfilesCommand } from '@remnawave/backend-contract'
+import { ConfigProfileWithEngine } from '@shared/api/contracts/config-profile-engine.contract'
 
 export interface Props {
-    configProfiles: GetConfigProfilesCommand.Response['response']['configProfiles']
+    configProfiles: ConfigProfileWithEngine[]
 }

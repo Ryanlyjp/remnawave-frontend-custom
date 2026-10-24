@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { queryClient } from '@shared/api'
+import { CoreEngine } from '@shared/api/contracts/config-profile-engine.contract'
 import { PolicyModuleKind, PolicyModuleScope, useCreatePolicyModule } from '@shared/api/hooks'
 import { QueryKeys } from '@shared/api/hooks/keys-factory'
 import { useCreateSnippet } from '@shared/api/hooks/snippets/snippets.mutation.hooks'
@@ -24,10 +25,11 @@ import classes from './Snippets.module.css'
 export const CREATE_SNIPPET_MODAL_ID = 'create-snippet-modal'
 
 interface IProps {
+    forcedEngine?: CoreEngine
     forcedKind?: PolicyModuleKind
 }
 
-export const CreateSnippetModal = ({ forcedKind }: IProps) => {
+export const CreateSnippetModal = ({ forcedEngine = 'XRAY', forcedKind }: IProps) => {
     const { t, i18n } = useTranslation()
 
     const monaco = useMonaco()
@@ -100,6 +102,7 @@ export const CreateSnippetModal = ({ forcedKind }: IProps) => {
             createPolicyModule(
                 {
                     name: values.name,
+                    engine: forcedEngine,
                     kind: forcedKind,
                     scope,
                     description: description || null,

@@ -111,6 +111,7 @@ export const EditSnippetModal = (props: IProps) => {
             updatePolicyModule(
                 {
                     name: values.name,
+                    engine: snippet.engine,
                     kind,
                     scope,
                     description: description || null,

@@ -2,10 +2,12 @@ import { createQueryKeys } from '@lukemorales/query-key-factory'
 import { useQuery } from '@tanstack/react-query'
 
 import { instance } from '@shared/api/axios'
+import { CoreEngine } from '@shared/api/contracts/config-profile-engine.contract'
 import { sToMs } from '@shared/utils/time-utils'
 
 export interface SnippetRecord {
     name: string
+    engine: CoreEngine
     snippet: unknown
     kind?: string | null
     scope?: string | null

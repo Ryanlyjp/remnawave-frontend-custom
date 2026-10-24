@@ -3,7 +3,20 @@ import type { editor } from 'monaco-editor'
 import { ConfigEditorActionsFeature } from '@features/dashboard/config-profiles/config-editor-actions'
 import { ConfigValidationFeature } from '@features/dashboard/config-profiles/config-validation'
 import { MonacoSetupFeature } from '@features/dashboard/config-profiles/monaco-setup'
-import { Box, Button, Card, Code, Group, Loader, Paper, Select, Stack, Text } from '@mantine/core'
+import {
+    Box,
+    Button,
+    Card,
+    Code,
+    Group,
+    Loader,
+    Paper,
+    PasswordInput,
+    Select,
+    Stack,
+    Text,
+    TextInput
+} from '@mantine/core'
 import { modals } from '@mantine/modals'
 import { useMonaco } from '@monaco-editor/react'
 import clsx from 'clsx'
@@ -65,18 +78,43 @@ const applyPolicyModuleSelection = (
     return nextConfig
 }
 
+const getTuicUser = (config: Record<string, unknown> | null): Record<string, unknown> | null => {
+    const inbounds = config?.inbounds
+    if (!Array.isArray(inbounds)) return null
+
+    const inbound = inbounds.find(
+        (item): item is Record<string, unknown> =>
+            Boolean(item) && typeof item === 'object' && item.type === 'tuic'
+    )
+    const users = inbound?.users
+    return Array.isArray(users) && users[0] && typeof users[0] === 'object'
+        ? (users[0] as Record<string, unknown>)
+        : null
+}
+
+const applyTuicCredential = (
+    config: Record<string, unknown>,
+    key: 'password' | 'uuid',
+    value: string
+): Record<string, unknown> => {
+    const nextConfig = structuredClone(config)
+    const user = getTuicUser(nextConfig)
+    if (user) user[key] = value
+    return nextConfig
+}
+
 export function ConfigEditorWidget(props: IProps) {
     const { t, i18n } = useTranslation()
     const monaco = useMonaco()
 
     const { configProfile, isWasmCrashed, isWasmRestarting, onRestartWasm, snippets } = props
 
+    const initialValue = JSON.stringify(configProfile.config, null, 2) || ''
     const [result, setResult] = useState('')
     const [isConfigValid, setIsConfigValid] = useState(true)
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
-    const [originalValue, setOriginalValue] = useState<string>(
-        JSON.stringify(configProfile.config, null, 2) || ''
-    )
+    const [editorValue, setEditorValue] = useState(initialValue)
+    const [originalValue, setOriginalValue] = useState<string>(initialValue)
 
     const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
     const wasWasmRestarting = useRef(false)
@@ -89,22 +127,49 @@ export function ConfigEditorWidget(props: IProps) {
     useEffect(() => {
         if (!monaco) return
 
-        MonacoSetupFeature.setup(i18n.language, snippets.snippets)
-    }, [i18n.language, snippets, monaco])
+        MonacoSetupFeature.setup(
+            i18n.language,
+            snippets.snippets.filter((snippet) => snippet.engine === configProfile.engine),
+            configProfile.engine
+        )
+    }, [configProfile.engine, i18n.language, snippets, monaco])
 
     const blocker = useBlocker(
         ({ currentLocation, nextLocation }) =>
             hasUnsavedChanges && currentLocation.pathname !== nextLocation.pathname
     )
 
-    const snippetMap = new Map(snippets.snippets.map((s) => [s.name, s.snippet]))
-    const parsedConfig = getParsedEditorConfig(editorRef.current?.getValue() ?? originalValue)
+    const snippetMap = new Map(
+        snippets.snippets
+            .filter((snippet) => snippet.engine === configProfile.engine)
+            .map((snippet) => [snippet.name, snippet.snippet])
+    )
+    const parsedConfig = getParsedEditorConfig(editorValue)
     const outboundModuleOptions = snippets.snippets
-        .filter((snippet) => snippet.kind === 'outbound-set')
+        .filter(
+            (snippet) => snippet.engine === configProfile.engine && snippet.kind === 'outbound-set'
+        )
         .map((snippet) => ({ value: snippet.name, label: snippet.name }))
     const routingRuleModuleOptions = snippets.snippets
-        .filter((snippet) => snippet.kind === 'routing-rule-set')
+        .filter(
+            (snippet) =>
+                snippet.engine === configProfile.engine && snippet.kind === 'routing-rule-set'
+        )
         .map((snippet) => ({ value: snippet.name, label: snippet.name }))
+    const tuicUser = getTuicUser(parsedConfig)
+
+    const validateCurrentConfig = () => {
+        if (configProfile.engine === 'SINGBOX') {
+            ConfigValidationFeature.validateSingbox(
+                editorRef,
+                setResult,
+                setIsConfigValid,
+                snippetMap
+            )
+        } else {
+            ConfigValidationFeature.validate(editorRef, setResult, setIsConfigValid, snippetMap)
+        }
+    }
 
     const handlePolicyModulesChange = (key: 'outbounds' | 'routingRules', values: string[]) => {
         if (!editorRef.current) return
@@ -112,26 +177,42 @@ export function ConfigEditorWidget(props: IProps) {
         const currentConfig = getParsedEditorConfig(editorRef.current.getValue())
         if (!currentConfig) return
 
-        const nextConfig = applyPolicyModuleSelection(currentConfig, key, values)
-        editorRef.current.setValue(JSON.stringify(nextConfig, null, 2))
+        const nextValue = JSON.stringify(
+            applyPolicyModuleSelection(currentConfig, key, values),
+            null,
+            2
+        )
+        setEditorValue(nextValue)
+        editorRef.current.setValue(nextValue)
 
-        if (!isWasmCrashed && !isWasmRestarting) {
-            ConfigValidationFeature.validate(editorRef, setResult, setIsConfigValid, snippetMap)
+        if (configProfile.engine === 'SINGBOX' || (!isWasmCrashed && !isWasmRestarting)) {
+            validateCurrentConfig()
         }
-        checkForChanges()
+        checkForChanges(nextValue)
+    }
+
+    const handleTuicCredentialChange = (key: 'password' | 'uuid', value: string) => {
+        if (!editorRef.current) return
+        const currentConfig = getParsedEditorConfig(editorRef.current.getValue())
+        if (!currentConfig) return
+
+        const nextValue = JSON.stringify(applyTuicCredential(currentConfig, key, value), null, 2)
+        setEditorValue(nextValue)
+        editorRef.current.setValue(nextValue)
+        validateCurrentConfig()
+        checkForChanges(nextValue)
     }
 
     useEffect(() => {
         if (wasWasmRestarting.current && !isWasmRestarting && !isWasmCrashed && editorRef.current) {
-            ConfigValidationFeature.validate(editorRef, setResult, setIsConfigValid, snippetMap)
+            validateCurrentConfig()
         }
         wasWasmRestarting.current = isWasmRestarting
     }, [isWasmRestarting, isWasmCrashed])
 
-    const checkForChanges = () => {
-        if (!editorRef.current) return
-
-        const currentValue = editorRef.current.getValue()
+    const checkForChanges = (value?: string) => {
+        const currentValue = value ?? editorRef.current?.getValue()
+        if (currentValue === undefined) return
         const hasChanges = currentValue !== originalValue
         setHasUnsavedChanges(hasChanges)
     }
@@ -185,11 +266,16 @@ export function ConfigEditorWidget(props: IProps) {
         }
     }, [blocker])
 
-    const statusBar = (result || isWasmRestarting || isWasmCrashed) && (
+    const isXrayProfile = configProfile.engine === 'XRAY'
+    const statusBar = (result || (isXrayProfile && (isWasmRestarting || isWasmCrashed))) && (
         <EditorStatusBar
-            status={isWasmCrashed || isWasmRestarting || !isConfigValid ? 'error' : 'success'}
+            status={
+                (isXrayProfile && (isWasmCrashed || isWasmRestarting)) || !isConfigValid
+                    ? 'error'
+                    : 'success'
+            }
         >
-            {isWasmRestarting && (
+            {isXrayProfile && isWasmRestarting && (
                 <Group gap="xs">
                     <Loader color="orange" size="xs" />
                     <Code className={styles.statusCode} color="orange">
@@ -197,7 +283,7 @@ export function ConfigEditorWidget(props: IProps) {
                     </Code>
                 </Group>
             )}
-            {!isWasmRestarting && isWasmCrashed && (
+            {isXrayProfile && !isWasmRestarting && isWasmCrashed && (
                 <Group gap="sm">
                     <Code className={styles.statusCode} color="red">
                         Xray Core (WASM) crashed. Validation is unavailable.
@@ -207,7 +293,7 @@ export function ConfigEditorWidget(props: IProps) {
                     </Button>
                 </Group>
             )}
-            {!isWasmRestarting && !isWasmCrashed && result}
+            {(!isXrayProfile || (!isWasmRestarting && !isWasmCrashed)) && result}
         </EditorStatusBar>
     )
 
@@ -217,8 +303,38 @@ export function ConfigEditorWidget(props: IProps) {
                 <Card mb="md" withBorder>
                     <Stack>
                         <Text fw={600} size="sm">
-                            策略模块
+                            {configProfile.engine === 'SINGBOX'
+                                ? 'Sing-box 策略与凭据'
+                                : 'Xray 策略模块'}
                         </Text>
+                        {configProfile.engine === 'SINGBOX' && tuicUser && (
+                            <Group grow>
+                                <TextInput
+                                    label="TUIC UUID"
+                                    onChange={(event) =>
+                                        handleTuicCredentialChange(
+                                            'uuid',
+                                            event.currentTarget.value
+                                        )
+                                    }
+                                    value={typeof tuicUser.uuid === 'string' ? tuicUser.uuid : ''}
+                                />
+                                <PasswordInput
+                                    label="TUIC Password"
+                                    onChange={(event) =>
+                                        handleTuicCredentialChange(
+                                            'password',
+                                            event.currentTarget.value
+                                        )
+                                    }
+                                    value={
+                                        typeof tuicUser.password === 'string'
+                                            ? tuicUser.password
+                                            : ''
+                                    }
+                                />
+                            </Group>
+                        )}
                         <Select
                             clearable
                             data={outboundModuleOptions}
@@ -272,35 +388,34 @@ export function ConfigEditorWidget(props: IProps) {
                     className={styles.monacoEditor}
                     defaultLanguage="json"
                     loading={<LoaderModalShared mih="100%" />}
-                    onChange={() => {
-                        if (!isWasmCrashed && !isWasmRestarting) {
-                            ConfigValidationFeature.validate(
-                                editorRef,
-                                setResult,
-                                setIsConfigValid,
-                                snippetMap
-                            )
+                    onChange={(value) => {
+                        const currentValue = value ?? ''
+                        setEditorValue(currentValue)
+                        if (
+                            configProfile.engine === 'SINGBOX' ||
+                            (!isWasmCrashed && !isWasmRestarting)
+                        ) {
+                            validateCurrentConfig()
                         }
 
-                        checkForChanges()
+                        checkForChanges(currentValue)
                     }}
                     onMount={(editor) => {
                         editorRef.current = editor
 
                         editor.getAction('editor.foldLevel7')?.run()
 
-                        ConfigValidationFeature.validate(
-                            editorRef,
-                            setResult,
-                            setIsConfigValid,
-                            snippetMap
-                        )
+                        validateCurrentConfig()
                     }}
                     options={{
                         stickyScroll: { enabled: false }
                     }}
-                    path="xray-config://*"
-                    value={JSON.stringify(configProfile.config, null, 2)}
+                    path={
+                        configProfile.engine === 'SINGBOX'
+                            ? 'singbox-config://*'
+                            : 'xray-config://*'
+                    }
+                    value={editorValue}
                 />
             </Paper>
 

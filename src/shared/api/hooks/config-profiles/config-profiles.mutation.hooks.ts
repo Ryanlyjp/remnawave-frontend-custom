@@ -7,12 +7,18 @@ import {
     UpdateConfigProfileCommand
 } from '@remnawave/backend-contract'
 
+import {
+    CreateConfigProfileWithEngineBodySchema,
+    GetConfigProfileWithEngineResponseSchema,
+    UpdateConfigProfileWithEngineResponseSchema
+} from '@shared/api/contracts/config-profile-engine.contract'
+
 import { createMutationHook } from '../../tsq-helpers'
 
 export const useUpdateConfigProfile = createMutationHook({
     endpoint: UpdateConfigProfileCommand.TSQ_url,
     bodySchema: UpdateConfigProfileCommand.RequestBodySchema,
-    responseSchema: UpdateConfigProfileCommand.ResponseSchema,
+    responseSchema: UpdateConfigProfileWithEngineResponseSchema,
     requestMethod: UpdateConfigProfileCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
         onSuccess: () => {
@@ -58,8 +64,8 @@ export const useDeleteConfigProfile = createMutationHook({
 
 export const useCreateConfigProfile = createMutationHook({
     endpoint: CreateConfigProfileCommand.TSQ_url,
-    responseSchema: CreateConfigProfileCommand.ResponseSchema,
-    bodySchema: CreateConfigProfileCommand.RequestBodySchema,
+    responseSchema: GetConfigProfileWithEngineResponseSchema,
+    bodySchema: CreateConfigProfileWithEngineBodySchema,
     requestMethod: CreateConfigProfileCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
         onSuccess: () => {

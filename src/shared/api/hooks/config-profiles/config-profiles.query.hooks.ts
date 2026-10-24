@@ -7,6 +7,11 @@ import {
     GetInboundsByProfileUuidCommand
 } from '@remnawave/backend-contract'
 
+import {
+    GetComputedConfigProfileWithEngineResponseSchema,
+    GetConfigProfilesWithEngineResponseSchema,
+    GetConfigProfileWithEngineResponseSchema
+} from '@shared/api/contracts/config-profile-engine.contract'
 import { sToMs } from '@shared/utils/time-utils'
 
 import { createGetQueryHook, errorHandler } from '../../tsq-helpers'
@@ -31,7 +36,7 @@ export const configProfilesQueryKeys = createQueryKeys('configProfiles', {
 
 export const useGetConfigProfiles = createGetQueryHook({
     endpoint: GetConfigProfilesCommand.TSQ_url,
-    responseSchema: GetConfigProfilesCommand.ResponseSchema,
+    responseSchema: GetConfigProfilesWithEngineResponseSchema,
     getQueryKey: () => configProfilesQueryKeys.getConfigProfiles.queryKey,
     rQueryParams: {
         refetchOnMount: true,
@@ -42,7 +47,7 @@ export const useGetConfigProfiles = createGetQueryHook({
 
 export const useGetConfigProfile = createGetQueryHook({
     endpoint: GetConfigProfileByUuidCommand.TSQ_url,
-    responseSchema: GetConfigProfileByUuidCommand.ResponseSchema,
+    responseSchema: GetConfigProfileWithEngineResponseSchema,
     routeParamsSchema: GetConfigProfileByUuidCommand.RequestParamSchema,
     getQueryKey: ({ route }) => configProfilesQueryKeys.getConfigProfile(route!).queryKey,
     rQueryParams: {
@@ -66,7 +71,7 @@ export const useGetConfigProfileInbounds = createGetQueryHook({
 
 export const useGetComputedConfigProfile = createGetQueryHook({
     endpoint: GetComputedConfigProfileByUuidCommand.TSQ_url,
-    responseSchema: GetComputedConfigProfileByUuidCommand.ResponseSchema,
+    responseSchema: GetComputedConfigProfileWithEngineResponseSchema,
     routeParamsSchema: GetComputedConfigProfileByUuidCommand.RequestParamSchema,
     getQueryKey: ({ route }) => configProfilesQueryKeys.getComputedConfigProfile(route!).queryKey,
     rQueryParams: {

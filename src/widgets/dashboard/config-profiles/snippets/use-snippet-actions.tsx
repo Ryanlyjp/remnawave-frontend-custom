@@ -4,12 +4,11 @@ import { useState } from 'react'
 import { TbCode } from 'react-icons/tb'
 
 import { queryClient } from '@shared/api'
-import { useDeleteSnippet, useSyncSnippet } from '@shared/api/hooks'
+import { useDeletePolicyModule } from '@shared/api/hooks'
 import { QueryKeys } from '@shared/api/hooks/keys-factory'
 import { useIsMobile } from '@shared/hooks'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 
-import { openConfirmSnippetSyncModal } from './confirm-snippet-sync.modal'
 import { EDIT_SNIPPET_MODAL_ID, EditSnippetModal } from './edit-snippet.modal'
 import { TSnippet } from './types'
 
@@ -18,17 +17,9 @@ export function useSnippetActions() {
 
     const [deletingName, setDeletingName] = useState<null | string>(null)
 
-    const { mutate: deleteSnippet } = useDeleteSnippet({
-        mutationFns: {
-            onSuccess: () => {
-                queryClient.refetchQueries({ queryKey: QueryKeys.snippets.getSnippets.queryKey })
-            }
-        }
-    })
+    const { mutate: deleteSnippet } = useDeletePolicyModule()
 
-    const { mutate: syncSnippet } = useSyncSnippet()
-
-    const handleDelete = (name: string) => {
+    const handleDelete = (snippet: TSnippet) => {
         modals.openConfirmModal({
             title: t('common.action.confirm-action'),
             children: t('common.message.confirm-action-description'),
@@ -40,13 +31,13 @@ export function useSnippetActions() {
             cancelProps: { variant: 'subtle' },
             confirmProps: { color: 'red', variant: 'soft' },
             onConfirm: () => {
-                setDeletingName(name)
+                setDeletingName(snippet.name)
                 deleteSnippet(
-                    { variables: { name } },
+                    { name: snippet.name, engine: snippet.engine },
                     {
                         onSuccess: () => {
-                            openConfirmSnippetSyncModal(() => {
-                                syncSnippet({ variables: { name } })
+                            queryClient.refetchQueries({
+                                queryKey: QueryKeys.snippets.getSnippets.queryKey
                             })
                         },
                         onSettled: () => setDeletingName(null)

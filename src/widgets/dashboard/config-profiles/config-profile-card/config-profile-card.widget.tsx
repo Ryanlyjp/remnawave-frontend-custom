@@ -1,7 +1,6 @@
 import { Badge, Box, CopyButton, Divider, Group, Loader, Menu, Text, Tooltip } from '@mantine/core'
 import { modals } from '@mantine/modals'
 import { notifications } from '@mantine/notifications'
-import { GetConfigProfilesCommand } from '@remnawave/backend-contract'
 import { githubDarkTheme, JsonEditor } from 'json-edit-react'
 import { useTranslation } from 'react-i18next'
 import { PiCheck, PiCopy, PiCpu, PiPencil, PiTag, PiTrashDuotone } from 'react-icons/pi'
@@ -9,16 +8,17 @@ import { TbCheck, TbCpu2, TbDownload, TbEye, TbTags } from 'react-icons/tb'
 import { generatePath, useNavigate } from 'react-router'
 
 import { showModal } from '@shared/_modals/show-modal'
+import { ConfigProfileWithEngine } from '@shared/api/contracts/config-profile-engine.contract'
 import { useGetComputedConfigProfile } from '@shared/api/hooks/config-profiles/config-profiles.query.hooks'
 import { ROUTES } from '@shared/constants'
 import { WithDndSortable } from '@shared/hocs/with-dnd-sortable'
 import { EntityCardShared } from '@shared/ui/entity-card'
-import { XrayLogo } from '@shared/ui/logos'
+import { SingboxLogo, XrayLogo } from '@shared/ui/logos'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { formatInt } from '@shared/utils/misc'
 
 interface IProps {
-    configProfile: GetConfigProfilesCommand.Response['response']['configProfiles'][number]
+    configProfile: ConfigProfileWithEngine
     disableReordering?: boolean
     handleDeleteConfigProfile: (configProfileUuid: string) => void
     isDragOverlay?: boolean
@@ -38,6 +38,7 @@ export function ConfigProfileCardWidget(props: IProps) {
     const nodesCount = configProfile.nodes.length
     const inboundsCount = configProfile.inbounds.length
     const isActive = nodesCount > 0
+    const ProfileLogo = configProfile.engine === 'SINGBOX' ? SingboxLogo : XrayLogo
 
     const handleEditConfigProfile = () => {
         navigate(
@@ -146,57 +147,66 @@ export function ConfigProfileCardWidget(props: IProps) {
             <EntityCardShared.Root isActive={isActive} onClick={handleEditConfigProfile}>
                 <EntityCardShared.Header>
                     <EntityCardShared.Icon highlight={isActive}>
-                        <XrayLogo size={22} />
+                        <ProfileLogo size={22} />
                     </EntityCardShared.Icon>
                     <EntityCardShared.Content
                         tags={configProfile.tags}
                         badges={
                             <Group gap="xs" wrap="nowrap">
-                                <Tooltip label={t('common.field.inbounds')}>
-                                    <Badge
-                                        color="blue"
-                                        leftSection={<PiTag size={12} />}
-                                        onClick={(event) => {
-                                            event.stopPropagation()
-                                            showModal(
-                                                'configProfiles_configProfileInboundsDrawer',
-                                                {
-                                                    uuid: configProfile.uuid
-                                                }
-                                            )
-                                        }}
-                                        size="lg"
-                                        style={{ cursor: 'pointer' }}
-                                        variant="soft"
-                                    >
-                                        {formatInt(inboundsCount, {
-                                            thousandSeparator: ','
-                                        })}
-                                    </Badge>
-                                </Tooltip>
+                                <Badge
+                                    color={configProfile.engine === 'SINGBOX' ? 'orange' : 'blue'}
+                                >
+                                    {configProfile.engine === 'SINGBOX' ? 'Sing-box' : 'Xray'}
+                                </Badge>
+                                {configProfile.engine === 'XRAY' && (
+                                    <>
+                                        <Tooltip label={t('common.field.inbounds')}>
+                                            <Badge
+                                                color="blue"
+                                                leftSection={<PiTag size={12} />}
+                                                onClick={(event) => {
+                                                    event.stopPropagation()
+                                                    showModal(
+                                                        'configProfiles_configProfileInboundsDrawer',
+                                                        {
+                                                            uuid: configProfile.uuid
+                                                        }
+                                                    )
+                                                }}
+                                                size="lg"
+                                                style={{ cursor: 'pointer' }}
+                                                variant="soft"
+                                            >
+                                                {formatInt(inboundsCount, {
+                                                    thousandSeparator: ','
+                                                })}
+                                            </Badge>
+                                        </Tooltip>
 
-                                <Tooltip label={t('config-profiles-grid.widget.nodes')}>
-                                    <Badge
-                                        color={isActive ? 'teal' : 'gray'}
-                                        leftSection={<PiCpu size={12} />}
-                                        onClick={(event) => {
-                                            event.stopPropagation()
-                                            showModal('configProfiles_activeNodesModal', {
-                                                nodes: configProfile.nodes,
-                                                profileName: configProfile.name
-                                            })
-                                        }}
-                                        size="lg"
-                                        style={{
-                                            cursor: 'pointer'
-                                        }}
-                                        variant="soft"
-                                    >
-                                        {formatInt(nodesCount, {
-                                            thousandSeparator: ','
-                                        })}
-                                    </Badge>
-                                </Tooltip>
+                                        <Tooltip label={t('config-profiles-grid.widget.nodes')}>
+                                            <Badge
+                                                color={isActive ? 'teal' : 'gray'}
+                                                leftSection={<PiCpu size={12} />}
+                                                onClick={(event) => {
+                                                    event.stopPropagation()
+                                                    showModal('configProfiles_activeNodesModal', {
+                                                        nodes: configProfile.nodes,
+                                                        profileName: configProfile.name
+                                                    })
+                                                }}
+                                                size="lg"
+                                                style={{
+                                                    cursor: 'pointer'
+                                                }}
+                                                variant="soft"
+                                            >
+                                                {formatInt(nodesCount, {
+                                                    thousandSeparator: ','
+                                                })}
+                                            </Badge>
+                                        </Tooltip>
+                                    </>
+                                )}
                             </Group>
                         }
                         title={configProfile.name}

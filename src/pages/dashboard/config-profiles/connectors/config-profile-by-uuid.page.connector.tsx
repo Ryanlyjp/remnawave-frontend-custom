@@ -29,15 +29,7 @@ export function ConfigProfileByUuidPageConnector() {
 
     const { data: snippets, isLoading: isSnippetsLoading } = useGetSnippets({})
 
-    const initWasm = useCallback(async (isRestart = false) => {
-        if (isRestart) {
-            setIsWasmRestarting(true)
-            setIsWasmCrashed(false)
-        } else {
-            setIsLoading(true)
-            setDownloadProgress(0)
-        }
-
+    const initWasm = useCallback(async () => {
         try {
             const go = new window.Go()
             const wasmInitialized = new Promise<void>((resolve) => {
@@ -78,22 +70,33 @@ export function ConfigProfileByUuidPageConnector() {
     }, [])
 
     const restartWasm = useCallback(() => {
-        initWasm(true)
+        setIsWasmRestarting(true)
+        setIsWasmCrashed(false)
+        initWasm()
     }, [initWasm])
 
     useLayoutEffect(() => {
-        initWasm()
+        if (!configProfile || configProfile.engine === 'SINGBOX') return
+
+        const initialization = window.setTimeout(() => initWasm(), 0)
 
         return () => {
+            window.clearTimeout(initialization)
             delete window.onWasmInitialized
         }
-    }, [])
+    }, [configProfile?.engine])
 
     if (!uuid) {
         return <Navigate to={ROUTES.DASHBOARD.MANAGEMENT.CONFIG_PROFILES} />
     }
 
-    if (isLoading || isConfigProfileLoading || !configProfile || isSnippetsLoading || !snippets) {
+    if (
+        isConfigProfileLoading ||
+        !configProfile ||
+        isSnippetsLoading ||
+        !snippets ||
+        (configProfile.engine === 'XRAY' && isLoading)
+    ) {
         return <LoadingScreen text="The WASM module is loading..." value={downloadProgress} />
     }
 

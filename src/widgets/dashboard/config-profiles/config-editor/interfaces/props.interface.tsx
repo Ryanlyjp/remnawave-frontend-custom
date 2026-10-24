@@ -1,9 +1,8 @@
-import { GetConfigProfileByUuidCommand } from '@remnawave/backend-contract'
-
+import { ConfigProfileWithEngine } from '@shared/api/contracts/config-profile-engine.contract'
 import { SnippetsResponse } from '@shared/api/hooks/snippets/snippets.query.hooks'
 
 export interface IProps {
-    configProfile: GetConfigProfileByUuidCommand.Response['response']
+    configProfile: ConfigProfileWithEngine
     isWasmCrashed: boolean
     isWasmRestarting: boolean
     onRestartWasm: () => void

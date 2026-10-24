@@ -1,6 +1,5 @@
 import {
     GetSharedListsCommand,
-    GetSnippetsCommand,
     HostMapperSchema,
     ResponseRulesConfigSchema,
     TSubscriptionTemplateType
@@ -10,6 +9,8 @@ import axios from 'axios'
 import consola from 'consola'
 import { app } from 'src/config'
 
+import { CoreEngine } from '@shared/api/contracts/config-profile-engine.contract'
+import { SnippetRecord } from '@shared/api/hooks/snippets/snippets.query.hooks'
 import { registerJsonSchema } from '@shared/utils/monaco/json-schema-registry'
 
 interface ISchemaNode {
@@ -184,10 +185,37 @@ const resolveRootNode = (schema: IXraySchema | undefined): ISchemaNode | undefin
 export const MonacoSetupFeature = {
     setup: async (
         currentLanguage: string,
-        snippets: GetSnippetsCommand.Response['response']['snippets']
+        snippets: SnippetRecord[],
+        engine: CoreEngine = 'XRAY'
     ) => {
         try {
             const snippetNames = snippets.map((s) => s.name)
+
+            if (engine === 'SINGBOX') {
+                const response = await axios.get('/assets/singbox.schema.json')
+                const schema = response.data as { properties?: Record<string, unknown> }
+                schema.properties ??= {}
+                schema.properties.policyModules = {
+                    type: 'object',
+                    properties: {
+                        outbounds: {
+                            type: 'array',
+                            items: { type: 'string', enum: snippetNames }
+                        },
+                        routingRules: {
+                            type: 'array',
+                            items: { type: 'string', enum: snippetNames }
+                        }
+                    },
+                    additionalProperties: false
+                }
+                registerJsonSchema({
+                    fileMatch: ['singbox-config://*'],
+                    schema,
+                    uri: 'https://singbox-config-schema.json'
+                })
+                return
+            }
 
             let { jsonSchemaUrl } = app.configEditor
             switch (currentLanguage) {
