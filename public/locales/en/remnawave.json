@@ -1905,10 +1905,10 @@
   },
   "user-host-aliases": {
     "title": "Subscription node names",
-    "description": "Customize the node names generated only for this user. Global Host remarks are not changed.",
-    "empty": "This user currently has no selectable Hosts.",
+    "description": "Customize the Host and managed TUIC names generated only for this user. Global names are not changed.",
+    "empty": "This user currently has no selectable subscription nodes.",
     "save": "Save",
     "discard": "Discard changes",
-    "reset": "Reset to Host names"
+    "reset": "Reset to default names"
   }
 }
